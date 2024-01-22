@@ -1,3 +1,5 @@
+const csurf = require("csurf");
+const cookieParser = require("cookie-parser");
 const express = require("express");
 const app = express();
 const { Todo } = require("./models");
@@ -6,15 +8,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname + "/public"));
 app.set("view engine", "ejs");
+app.use(cookieParser("it's a secret"));
+app.use(csurf({ cookie: true }));
 
 app.get("/", async function (req, res) {
   const allTodos = await Todo.getTodos();
   if (req.accepts("html")) {
     const todaysDate = new Date().toISOString().split("T")[0];
     res.render("index", {
-      overdue: allTodos.filter((todo) => todo.dueDate < todaysDate),
-      dueToday: allTodos.filter((todo) => todo.dueDate === todaysDate),
-      dueLater: allTodos.filter((todo) => todo.dueDate > todaysDate),
+      overdue: allTodos.filter(
+        (todo) => todo.dueDate < todaysDate && !todo.completed
+      ),
+      dueToday: allTodos.filter(
+        (todo) => todo.dueDate === todaysDate && !todo.completed
+      ),
+      dueLater: allTodos.filter(
+        (todo) => todo.dueDate > todaysDate && !todo.completed
+      ),
+      completedItems: allTodos.filter((todo) => todo.completed),
+      csrfToken: req.csrfToken(),
     });
   } else {
     res.json(allTodos);
@@ -34,7 +46,7 @@ app.get("/todos", async function (req, res) {
 app.get("/todos/:id", async function (req, res) {
   try {
     const todo = await Todo.findByPk(req.params.id);
-    return res.json(todo);
+    return res.json();
   } catch (error) {
     console.log(error);
     return res.status(422).json(error);
@@ -49,18 +61,19 @@ app.post("/todos", async (req, res) => {
       dueDate: req.body.dueDate,
       completed: false,
     });
-    res.json(todo);
+    if (req.accepts("html")) res.redirect("/");
+    else res.json(todo);
   } catch (err) {
     console.log(err);
     res.status(422).json(err);
   }
 });
 
-app.put("/todos/:id/markAsCompleted", async (req, res) => {
+app.put("/todos/:id", async (req, res) => {
   console.log("Update todo of id:", req.params.id);
   const todo = await Todo.findByPk(req.params.id);
   try {
-    const updatedTodo = await todo.markAsCompleted();
+    const updatedTodo = await todo.setCompletionStatus(req.body.completed);
     res.json(updatedTodo);
   } catch (err) {
     console.log(err);
