@@ -1,14 +1,12 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable no-undef */
 const db = require("../models");
 
-const getJSDate = (days) => {
+const calculateDueDate = (days) => {
   if (!Number.isInteger(days)) {
-    throw new Error("Need to pass an integer as days");
+    throw new Error("An integer value representing days is required");
   }
   const today = new Date();
-  const oneDay = 60 * 60 * 24 * 1000;
-  return new Date(today.getTime() + days * oneDay);
+  const millisecondsInADay = 60 * 60 * 24 * 1000;
+  return new Date(today.getTime() + days * millisecondsInADay);
 };
 
 describe("Tests for functions in todo.js", function () {
@@ -16,83 +14,83 @@ describe("Tests for functions in todo.js", function () {
     await db.sequelize.sync({ force: true });
   });
 
-  test("Todo.overdue should return all tasks (including completed ones) that are past their due date", async () => {
-    const todo = await db.Todo.addTask({
-      title: "This is a sample item",
-      dueDate: getJSDate(-2),
+  test("Todo.overdue should retrieve all tasks, including completed ones, that are past their due date", async () => {
+    const task = await db.Todo.addTask({
+      title: "Sample Task",
+      dueDate: calculateDueDate(-2),
       completed: false,
     });
     const items = await db.Todo.overdue();
     expect(items.length).toBe(1);
   });
 
-  test("Todo.dueToday should return all tasks that are due today (including completed ones)", async () => {
+  test("Todo.dueToday should retrieve all tasks, including completed ones, due today", async () => {
     const dueTodayItems = await db.Todo.dueToday();
-    const todo = await db.Todo.addTask({
-      title: "This is a sample item",
-      dueDate: getJSDate(0),
+    const task = await db.Todo.addTask({
+      title: "Sample Task",
+      dueDate: calculateDueDate(0),
       completed: false,
     });
     const items = await db.Todo.dueToday();
     expect(items.length).toBe(dueTodayItems.length + 1);
   });
 
-  test("Todo.dueLater should return all tasks that are due on a future date (including completed ones)", async () => {
+  test("Todo.dueLater should retrieve all tasks, including completed ones, due on a future date", async () => {
     const dueLaterItems = await db.Todo.dueLater();
-    const todo = await db.Todo.addTask({
-      title: "This is a sample item",
-      dueDate: getJSDate(2),
+    const task = await db.Todo.addTask({
+      title: "Sample Task",
+      dueDate: calculateDueDate(2),
       completed: false,
     });
     const items = await db.Todo.dueLater();
     expect(items.length).toBe(dueLaterItems.length + 1);
   });
 
-  test("Todo.markAsComplete should change the `completed` property of a todo to `true`", async () => {
+  test("Todo.markAsComplete should update the 'completed' property of a task to true", async () => {
     const overdueItems = await db.Todo.overdue();
-    const aTodo = overdueItems[0];
-    expect(aTodo.completed).toBe(false);
-    await db.Todo.markAsComplete(aTodo.id);
-    await aTodo.reload();
+    const aTask = overdueItems[0];
+    expect(aTask.completed).toBe(false);
+    await db.Todo.markAsComplete(aTask.id);
+    await aTask.reload();
 
-    expect(aTodo.completed).toBe(true);
+    expect(aTask.completed).toBe(true);
   });
 
-  test("For a completed past-due item, Todo.displayableString should return a string of the format `ID. [x] TITLE DUE_DATE`", async () => {
+  test("For a completed past-due task, Todo.displayableString should return a specific format", async () => {
     const overdueItems = await db.Todo.overdue();
-    const aTodo = overdueItems[0];
-    expect(aTodo.completed).toBe(true);
-    const displayValue = aTodo.displayableString();
+    const aTask = overdueItems[0];
+    expect(aTask.completed).toBe(true);
+    const displayValue = aTask.displayableString();
     expect(displayValue).toBe(
-      `${aTodo.id}. [x] ${aTodo.title} ${aTodo.dueDate}`,
+      `${aTask.id}. [x] ${aTask.title} ${aTask.dueDate}`
     );
   });
 
-  test("For an incomplete todo in the future, Todo.displayableString should return a string of the format `ID. [ ] TITLE DUE_DATE`", async () => {
+  test("For an incomplete task in the future, Todo.displayableString should return a specific format", async () => {
     const dueLaterItems = await db.Todo.dueLater();
-    const aTodo = dueLaterItems[0];
-    expect(aTodo.completed).toBe(false);
-    const displayValue = aTodo.displayableString();
+    const aTask = dueLaterItems[0];
+    expect(aTask.completed).toBe(false);
+    const displayValue = aTask.displayableString();
     expect(displayValue).toBe(
-      `${aTodo.id}. [ ] ${aTodo.title} ${aTodo.dueDate}`,
+      `${aTask.id}. [ ] ${aTask.title} ${aTask.dueDate}`
     );
   });
 
-  test("For an incomplete todo due today, Todo.displayableString should return a string of the format `ID. [ ] TITLE` (date should not be shown)", async () => {
+  test("For an incomplete task due today, Todo.displayableString should return a specific format", async () => {
     const dueTodayItems = await db.Todo.dueToday();
-    const aTodo = dueTodayItems[0];
-    expect(aTodo.completed).toBe(false);
-    const displayValue = aTodo.displayableString();
-    expect(displayValue).toBe(`${aTodo.id}. [ ] ${aTodo.title}`);
+    const aTask = dueTodayItems[0];
+    expect(aTask.completed).toBe(false);
+    const displayValue = aTask.displayableString();
+    expect(displayValue).toBe(`${aTask.id}. [ ] ${aTask.title}`);
   });
 
-  test("For a complete todo due today, Todo.displayableString should return a string of the format `ID. [x] TITLE` (date should not be shown)", async () => {
+  test("For a complete task due today, Todo.displayableString should return a specific format", async () => {
     const dueTodayItems = await db.Todo.dueToday();
-    const aTodo = dueTodayItems[0];
-    expect(aTodo.completed).toBe(false);
-    await db.Todo.markAsComplete(aTodo.id);
-    await aTodo.reload();
-    const displayValue = aTodo.displayableString();
-    expect(displayValue).toBe(`${aTodo.id}. [x] ${aTodo.title}`);
+    const aTask = dueTodayItems[0];
+    expect(aTask.completed).toBe(false);
+    await db.Todo.markAsComplete(aTask.id);
+    await aTask.reload();
+    const displayValue = aTask.displayableString();
+    expect(displayValue).toBe(`${aTask.id}. [x] ${aTask.title}`);
   });
 });
